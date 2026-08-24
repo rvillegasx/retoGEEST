@@ -1,6 +1,7 @@
 import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
 import { AppError } from "./utils/errors.js";
 import { healthRoutes } from "./routes/health.js";
+import { taskRoutes } from "./routes/tasks.js";
 import { userRoutes } from "./routes/users.js";
 
 export function buildApp(): FastifyInstance {
@@ -30,6 +31,7 @@ export function buildApp(): FastifyInstance {
 
   app.register(healthRoutes);
   app.register(userRoutes);
+  app.register(taskRoutes);
 
   return app;
 }

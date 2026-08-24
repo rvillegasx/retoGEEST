@@ -6,5 +6,8 @@ export default defineConfig({
     globals: false,
     testTimeout: 10000,
     setupFiles: ["tests/setup.ts"],
+    // Test files share one real MySQL test database and each truncates
+    // tables in beforeEach, so files must not run concurrently.
+    fileParallelism: false,
   },
 });

@@ -1,6 +1,6 @@
 import { pool } from "../../src/db/pool.js";
 
-const TABLES = ["users"];
+const TABLES = ["tasks", "users"];
 
 export async function resetDatabase(): Promise<void> {
   const connection = await pool.getConnection();

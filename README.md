@@ -37,6 +37,7 @@ _Pendiente — se documenta al cerrar el proyecto._
 - **SQL directo con `mysql2`, sin ORM**: control total y transparencia sobre cómo se resuelven idempotencia y bloqueos de concurrencia, que son el punto más delicado del reto (sección Confiabilidad).
 - **Migraciones propias**: archivos `.sql` numerados en `db/migrations`, aplicados y registrados por un runner (`db/migrate.ts`) contra una tabla `schema_migrations`. Sin dependencia de un ORM/CLI externo.
 - **MySQL en Docker para desarrollo local**; en producción se usa una instancia MySQL ya existente en el Dokploy "beta" — el código no cambia entre ambientes, solo las variables de entorno (`DB_HOST`, etc.).
+- **Tests de archivo secuenciales (`fileParallelism: false`)**: los tests corren contra una base MySQL real compartida y cada archivo limpia sus tablas en `beforeEach`; correr archivos en paralelo causaba que un archivo truncara datos a mitad de otro test.
 
 ## Supuestos
 
