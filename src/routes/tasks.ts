@@ -16,7 +16,9 @@ import {
   type CreateTaskInput,
   type TaskStatus,
 } from "../repositories/tasksRepository.js";
+import { getNotificationAttemptsForTask } from "../repositories/notificationAttemptsRepository.js";
 import { getUserById } from "../repositories/usersRepository.js";
+import { notifyTaskArchived } from "../services/notificationService.js";
 import { ConflictError, NotFoundError, ValidationError } from "../utils/errors.js";
 import { withIdempotency } from "../utils/idempotency.js";
 import { parsePositiveIntParam } from "../utils/params.js";
@@ -143,11 +145,19 @@ export async function taskRoutes(app: FastifyInstance) {
       await markAssignmentCompleted(idTask, userId);
 
       const remaining = await countIncompleteAssignments(idTask);
+      let didArchive = false;
       if (remaining === 0) {
-        await archiveTask(idTask);
+        // archiveTask only reports true for whichever concurrent request
+        // actually flips open -> archived, so exactly one of two racing
+        // "last completion" requests ends up notifying.
+        didArchive = await archiveTask(idTask);
       }
 
       const updatedTask = await getTaskById(idTask);
+      if (didArchive && updatedTask) {
+        await notifyTaskArchived(updatedTask);
+      }
+
       return {
         statusCode: 200,
         body: {
@@ -158,5 +168,15 @@ export async function taskRoutes(app: FastifyInstance) {
         },
       };
     });
+  });
+
+  app.get("/tasks/:idTask/notifications", async (request) => {
+    const params = request.params as { idTask: string };
+    const idTask = parsePositiveIntParam(params.idTask, "idTask");
+
+    const task = await getTaskById(idTask);
+    if (!task) throw new NotFoundError("task not found", "TASK_NOT_FOUND");
+
+    return getNotificationAttemptsForTask(idTask);
   });
 }

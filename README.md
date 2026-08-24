@@ -52,6 +52,12 @@ _Pendiente — se documenta al cerrar el proyecto._
 
 Tabla `idempotency_keys` con PK compuesta `(idempotency_key, method, path)`. El primer request hace un `INSERT` (que actúa como lock atómico gracias a la PK); si otro request concurrente con la misma clave llega antes de que termine, su `INSERT` falla por duplicado y hace polling corto (cada 50ms, hasta 5s) hasta leer la respuesta ya guardada por el que "ganó". Así, incluso en paralelo, la operación se ejecuta una sola vez y ambas respuestas son idénticas. Un lock huérfano (proceso caído a medias) se considera abandonado después de 30s y se libera.
 
+### Archivado sin duplicados y notificaciones
+
+El riesgo real no es que dos requests marquen `archived` dos veces (`UPDATE tasks ... WHERE status = 'open'` ya lo evita por sí solo, vía el lock de fila de InnoDB), sino que **ambos** request lean "ya no queda nadie pendiente" y **ambos** intenten notificar. La solución: `archiveTask` devuelve `affectedRows === 1`, es decir, si *este* request fue el que realmente hizo la transición `open → archived`. Solo ese request dispara `notifyTaskArchived`; el que pierde la carrera ve `affectedRows === 0` y no notifica. Probado con dos `POST /tasks/:idTask/complete` disparados en paralelo (`Promise.all`) para los dos últimos usuarios asignados.
+
+El envío a `NOTIFY_URL` (opcional; si no está configurado, simplemente no se notifica) se espera de forma síncrona dentro del request que archiva — no es fire-and-forget. Esto añade latencia a esa respuesta cuando hay reintentos (hasta ~1.5s con 3 intentos), pero hace el comportamiento determinista: al recibir la respuesta de `/complete`, `GET /tasks/:idTask/notifications` ya refleja todos los intentos. Reintentos: hasta 3 intentos en total, con espera creciente (500ms, 1000ms) entre ellos, solo si la respuesta es `5xx` o no hay respuesta (error de red). Un `4xx` no reintenta. Cada intento se registra (número, timestamp, status HTTP o `null` si no hubo respuesta).
+
 ## Extra (mejora de nivel)
 
 _Pendiente — se implementa y documenta en la fase final._

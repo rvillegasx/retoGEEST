@@ -20,3 +20,9 @@ export const env = {
     database: required("DB_NAME"),
   },
 };
+
+// Read live (not cached at import time) so it can be pointed at a fake
+// destination in tests without needing to reimport the whole app module graph.
+export function getNotifyUrl(): string | null {
+  return process.env.NOTIFY_URL || null;
+}

@@ -8,6 +8,7 @@ export interface Task {
   title: string;
   description: string | null;
   status: TaskStatus;
+  archivedAt: string | null;
 }
 
 export interface CreateTaskInput {
@@ -20,10 +21,17 @@ interface TaskRow extends RowDataPacket {
   title: string;
   description: string | null;
   status: TaskStatus;
+  archived_at: Date | null;
 }
 
 function mapRow(row: TaskRow): Task {
-  return { id: row.id, title: row.title, description: row.description, status: row.status };
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    status: row.status,
+    archivedAt: row.archived_at ? row.archived_at.toISOString() : null,
+  };
 }
 
 export async function createTask(input: CreateTaskInput): Promise<Task> {
@@ -31,7 +39,13 @@ export async function createTask(input: CreateTaskInput): Promise<Task> {
     "INSERT INTO tasks (title, description) VALUES (:title, :description)",
     { ...input },
   );
-  return { id: result.insertId, title: input.title, description: input.description, status: "open" };
+  return {
+    id: result.insertId,
+    title: input.title,
+    description: input.description,
+    status: "open",
+    archivedAt: null,
+  };
 }
 
 export async function getTaskById(id: number): Promise<Task | null> {
@@ -40,11 +54,17 @@ export async function getTaskById(id: number): Promise<Task | null> {
   return row ? mapRow(row) : null;
 }
 
-export async function archiveTask(id: number): Promise<void> {
-  await pool.query(
+/**
+ * Archives the task iff it's still open. Returns whether THIS call performed
+ * the transition (affectedRows === 1) so callers only fire the archive
+ * notification once, even if two "last completion" requests race here.
+ */
+export async function archiveTask(id: number): Promise<boolean> {
+  const [result] = await pool.query<ResultSetHeader>(
     "UPDATE tasks SET status = 'archived', archived_at = NOW() WHERE id = :id AND status = 'open'",
     { id },
   );
+  return result.affectedRows === 1;
 }
 
 export async function listTasks(status?: TaskStatus): Promise<Task[]> {
