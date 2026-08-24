@@ -43,6 +43,14 @@ _Pendiente — se documenta al cerrar el proyecto._
 
 - **Email único por usuario**: el reto no lo especifica, pero se asume que no puede haber dos usuarios con el mismo correo. `POST /users` responde `409 EMAIL_ALREADY_REGISTERED` en ese caso.
 - **Completar dos veces la misma parte no es error**: si un usuario ya había marcado su parte como completada y vuelve a llamar `POST /tasks/:idTask/complete`, la respuesta es éxito (operación idempotente a nivel de dominio) en lugar de un error — el estado resultante es el mismo.
+- **`Idempotency-Key` es opcional**: el reto pide que los endpoints POST lo acepten, no que lo exijan. Sin el header, el comportamiento es el normal (no idempotente).
+- **Alcance de la clave de idempotencia**: se escopea por `(Idempotency-Key, método, path)`, no solo por el valor del header, para que la misma clave usada por error en dos endpoints distintos no colisione.
+- **Mismo `Idempotency-Key` con body distinto → `409 IDEMPOTENCY_KEY_REUSED`**: el reto no lo especifica, pero es el comportamiento estándar de este patrón (evita devolver una respuesta que no corresponde al request actual).
+- **Reintento de un request que falló**: se guarda y repite también la respuesta de error (4xx) para reintentos con la misma clave — solo un fallo interno inesperado (5xx) libera la clave para permitir un reintento real.
+
+### Cómo funciona la idempotencia
+
+Tabla `idempotency_keys` con PK compuesta `(idempotency_key, method, path)`. El primer request hace un `INSERT` (que actúa como lock atómico gracias a la PK); si otro request concurrente con la misma clave llega antes de que termine, su `INSERT` falla por duplicado y hace polling corto (cada 50ms, hasta 5s) hasta leer la respuesta ya guardada por el que "ganó". Así, incluso en paralelo, la operación se ejecuta una sola vez y ambas respuestas son idénticas. Un lock huérfano (proceso caído a medias) se considera abandonado después de 30s y se libera.
 
 ## Extra (mejora de nivel)
 

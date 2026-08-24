@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { getPendingTasksForUsers, getTasksForUser } from "../repositories/taskAssignmentsRepository.js";
 import { createUser, getUserById, listUsers, type CreateUserInput } from "../repositories/usersRepository.js";
 import { ConflictError, NotFoundError, ValidationError } from "../utils/errors.js";
+import { withIdempotency } from "../utils/idempotency.js";
 import { parsePositiveIntParam } from "../utils/params.js";
 
 interface CreateUserBody {
@@ -33,17 +34,19 @@ function isDuplicateEmailError(err: unknown): boolean {
 
 export async function userRoutes(app: FastifyInstance) {
   app.post("/users", async (request, reply) => {
-    const input = parseCreateUserBody((request.body ?? {}) as CreateUserBody);
+    await withIdempotency(request, reply, async () => {
+      const input = parseCreateUserBody((request.body ?? {}) as CreateUserBody);
 
-    try {
-      const user = await createUser(input);
-      reply.status(201).send(user);
-    } catch (err) {
-      if (isDuplicateEmailError(err)) {
-        throw new ConflictError("email is already registered", "EMAIL_ALREADY_REGISTERED");
+      try {
+        const user = await createUser(input);
+        return { statusCode: 201, body: user };
+      } catch (err) {
+        if (isDuplicateEmailError(err)) {
+          throw new ConflictError("email is already registered", "EMAIL_ALREADY_REGISTERED");
+        }
+        throw err;
       }
-      throw err;
-    }
+    });
   });
 
   app.get("/users", async () => {

@@ -18,6 +18,7 @@ import {
 } from "../repositories/tasksRepository.js";
 import { getUserById } from "../repositories/usersRepository.js";
 import { ConflictError, NotFoundError, ValidationError } from "../utils/errors.js";
+import { withIdempotency } from "../utils/idempotency.js";
 import { parsePositiveIntParam } from "../utils/params.js";
 
 interface CreateTaskBody {
@@ -72,9 +73,11 @@ function parseUserIdBody(userId: unknown): number {
 
 export async function taskRoutes(app: FastifyInstance) {
   app.post("/tasks", async (request, reply) => {
-    const input = parseCreateTaskBody((request.body ?? {}) as CreateTaskBody);
-    const task = await createTask(input);
-    reply.status(201).send({ ...task, assignedUsers: [] });
+    await withIdempotency(request, reply, async () => {
+      const input = parseCreateTaskBody((request.body ?? {}) as CreateTaskBody);
+      const task = await createTask(input);
+      return { statusCode: 201, body: { ...task, assignedUsers: [] } };
+    });
   });
 
   app.get("/tasks", async (request) => {
@@ -97,56 +100,63 @@ export async function taskRoutes(app: FastifyInstance) {
   });
 
   app.post("/tasks/:idTask/assign", async (request, reply) => {
-    const params = request.params as { idTask: string };
-    const idTask = parsePositiveIntParam(params.idTask, "idTask");
-    const body = (request.body ?? {}) as { userIds?: unknown };
-    const userIds = parseUserIdsBody(body.userIds);
+    await withIdempotency(request, reply, async () => {
+      const params = request.params as { idTask: string };
+      const idTask = parsePositiveIntParam(params.idTask, "idTask");
+      const body = (request.body ?? {}) as { userIds?: unknown };
+      const userIds = parseUserIdsBody(body.userIds);
 
-    const task = await getTaskById(idTask);
-    if (!task) throw new NotFoundError("task not found", "TASK_NOT_FOUND");
+      const task = await getTaskById(idTask);
+      if (!task) throw new NotFoundError("task not found", "TASK_NOT_FOUND");
 
-    const existingIds = new Set(await getExistingUserIds(userIds));
-    const missingIds = userIds.filter((id) => !existingIds.has(id));
-    if (missingIds.length > 0) {
-      throw new NotFoundError(`user(s) not found: ${missingIds.join(", ")}`, "USER_NOT_FOUND");
-    }
+      const existingIds = new Set(await getExistingUserIds(userIds));
+      const missingIds = userIds.filter((id) => !existingIds.has(id));
+      if (missingIds.length > 0) {
+        throw new NotFoundError(`user(s) not found: ${missingIds.join(", ")}`, "USER_NOT_FOUND");
+      }
 
-    await assignUsersToTask(idTask, userIds);
+      await assignUsersToTask(idTask, userIds);
 
-    const assignedUsers = await getAssignedUsersForTask(idTask);
-    reply.status(200).send({ message: "users assigned to task", assignedUsers });
+      const assignedUsers = await getAssignedUsersForTask(idTask);
+      return { statusCode: 200, body: { message: "users assigned to task", assignedUsers } };
+    });
   });
 
   app.post("/tasks/:idTask/complete", async (request, reply) => {
-    const params = request.params as { idTask: string };
-    const idTask = parsePositiveIntParam(params.idTask, "idTask");
-    const body = (request.body ?? {}) as { userId?: unknown };
-    const userId = parseUserIdBody(body.userId);
+    await withIdempotency(request, reply, async () => {
+      const params = request.params as { idTask: string };
+      const idTask = parsePositiveIntParam(params.idTask, "idTask");
+      const body = (request.body ?? {}) as { userId?: unknown };
+      const userId = parseUserIdBody(body.userId);
 
-    const task = await getTaskById(idTask);
-    if (!task) throw new NotFoundError("task not found", "TASK_NOT_FOUND");
+      const task = await getTaskById(idTask);
+      if (!task) throw new NotFoundError("task not found", "TASK_NOT_FOUND");
 
-    const user = await getUserById(userId);
-    if (!user) throw new NotFoundError("user not found", "USER_NOT_FOUND");
+      const user = await getUserById(userId);
+      if (!user) throw new NotFoundError("user not found", "USER_NOT_FOUND");
 
-    const assignment = await getAssignmentStatus(idTask, userId);
-    if (!assignment) {
-      throw new ConflictError("user is not assigned to this task", "USER_NOT_ASSIGNED");
-    }
+      const assignment = await getAssignmentStatus(idTask, userId);
+      if (!assignment) {
+        throw new ConflictError("user is not assigned to this task", "USER_NOT_ASSIGNED");
+      }
 
-    await markAssignmentCompleted(idTask, userId);
+      await markAssignmentCompleted(idTask, userId);
 
-    const remaining = await countIncompleteAssignments(idTask);
-    if (remaining === 0) {
-      await archiveTask(idTask);
-    }
+      const remaining = await countIncompleteAssignments(idTask);
+      if (remaining === 0) {
+        await archiveTask(idTask);
+      }
 
-    const updatedTask = await getTaskById(idTask);
-    reply.status(200).send({
-      message: "task marked as completed for user",
-      taskId: idTask,
-      userId,
-      taskStatus: updatedTask?.status ?? task.status,
+      const updatedTask = await getTaskById(idTask);
+      return {
+        statusCode: 200,
+        body: {
+          message: "task marked as completed for user",
+          taskId: idTask,
+          userId,
+          taskStatus: updatedTask?.status ?? task.status,
+        },
+      };
     });
   });
 }
