@@ -1,7 +1,7 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { buildApp } from "../src/app.js";
+import { buildTestApp } from "./helpers/app.js";
 import { closeDbPool, resetDatabase } from "./helpers/db.js";
 
 interface CapturedRequest {
@@ -40,7 +40,7 @@ afterAll(async () => {
 });
 
 describe("Archiving concurrency and notification retries", () => {
-  const app = buildApp();
+  const app = buildTestApp();
 
   beforeEach(async () => {
     await resetDatabase();

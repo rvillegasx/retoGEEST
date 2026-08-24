@@ -1,11 +1,16 @@
+import rateLimit from "@fastify/rate-limit";
 import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
-import { AppError } from "./utils/errors.js";
+import { getRateLimitConfig } from "./config/env.js";
+import { authenticateRequest } from "./plugins/authHook.js";
 import { healthRoutes } from "./routes/health.js";
 import { taskRoutes } from "./routes/tasks.js";
 import { userRoutes } from "./routes/users.js";
+import { AppError } from "./utils/errors.js";
 
 export function buildApp(): FastifyInstance {
-  const app = Fastify({ logger: true });
+  // trustProxy: rate limiting keys by request.ip, which otherwise resolves to
+  // Dokploy's reverse-proxy address for every client behind it in production.
+  const app = Fastify({ logger: true, trustProxy: true });
 
   app.setErrorHandler((error: FastifyError | AppError, request, reply) => {
     if (error instanceof AppError) {
@@ -28,6 +33,21 @@ export function buildApp(): FastifyInstance {
       error: { code: "INTERNAL_ERROR", message: "Unexpected server error" },
     });
   });
+
+  const rateLimitConfig = getRateLimitConfig();
+  app.register(rateLimit, {
+    max: rateLimitConfig.max,
+    timeWindow: rateLimitConfig.timeWindow,
+    // Default keyGenerator (by request.ip) — this API uses a single shared
+    // API key today, so IP is what actually distinguishes real clients.
+    // @fastify/rate-limit throws whatever this returns (see its source), so
+    // returning an AppError makes it flow through our own setErrorHandler
+    // with the standard { error: { code, message } } shape.
+    errorResponseBuilder: (_request, context) =>
+      new AppError(429, "RATE_LIMIT_EXCEEDED", `Too many requests, retry in ${context.after}`),
+  });
+
+  app.addHook("onRequest", authenticateRequest);
 
   app.register(healthRoutes);
   app.register(userRoutes);

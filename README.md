@@ -58,6 +58,22 @@ El riesgo real no es que dos requests marquen `archived` dos veces (`UPDATE task
 
 El envío a `NOTIFY_URL` (opcional; si no está configurado, simplemente no se notifica) se espera de forma síncrona dentro del request que archiva — no es fire-and-forget. Esto añade latencia a esa respuesta cuando hay reintentos (hasta ~1.5s con 3 intentos), pero hace el comportamiento determinista: al recibir la respuesta de `/complete`, `GET /tasks/:idTask/notifications` ya refleja todos los intentos. Reintentos: hasta 3 intentos en total, con espera creciente (500ms, 1000ms) entre ellos, solo si la respuesta es `5xx` o no hay respuesta (error de red). Un `4xx` no reintenta. Cada intento se registra (número, timestamp, status HTTP o `null` si no hubo respuesta).
 
-## Extra (mejora de nivel)
+## Extra (mejora de nivel): protección de la API
 
-_Pendiente — se implementa y documenta en la fase final._
+**Qué implementa:** autenticación por API key (header `x-api-key`, obligatorio en todos los endpoints excepto `GET /health`) + rate limiting (por defecto 300 requests/minuto, configurable con `RATE_LIMIT_MAX`/`RATE_LIMIT_WINDOW`, respuesta `429` con el mismo formato uniforme de error). Cuenta como una sola mejora: "proteger la API contra uso no autorizado y abuso", no dos features independientes.
+
+**Para probarla:** cualquier request (salvo `GET /health`) necesita el header `x-api-key` con el valor configurado en `API_KEY`. La API key de la instancia desplegada está en la sección [Despliegue](#despliegue) más abajo.
+
+**Qué problema resuelve:** la API queda expuesta en una URL pública durante 7 días. Sin autenticación, cualquiera en internet puede leer y escribir datos (crear usuarios, tareas, archivar) o saturarla con requests. Ninguno de los dos problemas está cubierto por la especificación funcional del reto.
+
+**Por qué era necesaria:** es la primera preocupación real al publicar cualquier API sin capa de red que la proteja (sin VPN, sin IP allowlist) — es exactamente la situación de este despliegue.
+
+**Por qué esta sobre otras alternativas:**
+- Sobre **OpenAPI/Swagger**: documentar sin proteger deja la API igual de expuesta; sirve para explorarla, no para asegurarla.
+- Sobre **health/logging/observabilidad**: útil en producción real, pero no evita que alguien abuse de la API pública durante la ventana de evaluación.
+- Sobre implementar solo una de las dos (auth *o* rate limit): una API key filtrada o compartida (inevitable si se publica en el README para que la evalúen) sin límite de requests sigue siendo vulnerable a abuso por fuerza bruta o carga; el rate limit es el complemento necesario, no una feature aparte.
+
+**Decisiones dentro de esta mejora:**
+- Una sola API key compartida (no hay tabla de usuarios/roles) — proporcional al alcance del reto; documentado como límite conocido.
+- El rate limit se aplica por IP (`request.ip`, con `trustProxy: true` para leer la IP real detrás del proxy de Dokploy), no por API key: como todos comparten la misma key, limitar por key equivaldría a un límite global compartido entre todos los clientes legítimos.
+- No afecta la funcionalidad requerida: los tests de las Fases 1–5 siguen intactos (ver `tests/helpers/app.ts`, que inyecta el header por defecto en los tests existentes).

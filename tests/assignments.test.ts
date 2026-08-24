@@ -1,8 +1,8 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { buildApp } from "../src/app.js";
+import { buildTestApp } from "./helpers/app.js";
 import { closeDbPool, resetDatabase } from "./helpers/db.js";
 
-async function createUser(app: ReturnType<typeof buildApp>, email: string) {
+async function createUser(app: ReturnType<typeof buildTestApp>, email: string) {
   const response = await app.inject({
     method: "POST",
     url: "/users",
@@ -11,13 +11,13 @@ async function createUser(app: ReturnType<typeof buildApp>, email: string) {
   return response.json().id as number;
 }
 
-async function createTask(app: ReturnType<typeof buildApp>, title = "Task") {
+async function createTask(app: ReturnType<typeof buildTestApp>, title = "Task") {
   const response = await app.inject({ method: "POST", url: "/tasks", payload: { title } });
   return response.json().id as number;
 }
 
 describe("Task assignment and completion", () => {
-  const app = buildApp();
+  const app = buildTestApp();
 
   beforeEach(async () => {
     await resetDatabase();

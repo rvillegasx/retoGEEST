@@ -1,9 +1,9 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { buildApp } from "../src/app.js";
+import { buildTestApp } from "./helpers/app.js";
 import { closeDbPool, resetDatabase } from "./helpers/db.js";
 
 describe("Tasks", () => {
-  const app = buildApp();
+  const app = buildTestApp();
 
   beforeEach(async () => {
     await resetDatabase();

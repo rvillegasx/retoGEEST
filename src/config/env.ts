@@ -12,6 +12,7 @@ function required(name: string): string {
 
 export const env = {
   port: Number(process.env.PORT ?? 3000),
+  apiKey: required("API_KEY"),
   db: {
     host: required("DB_HOST"),
     port: Number(process.env.DB_PORT ?? 3306),
@@ -25,4 +26,13 @@ export const env = {
 // destination in tests without needing to reimport the whole app module graph.
 export function getNotifyUrl(): string | null {
   return process.env.NOTIFY_URL || null;
+}
+
+// Also read live: lets a single test file register a stricter limit on its
+// own app instance without affecting the generous default used elsewhere.
+export function getRateLimitConfig(): { max: number; timeWindow: string } {
+  return {
+    max: Number(process.env.RATE_LIMIT_MAX ?? 300),
+    timeWindow: process.env.RATE_LIMIT_WINDOW ?? "1 minute",
+  };
 }
