@@ -1,4 +1,6 @@
-import "dotenv/config";
+import { config } from "dotenv";
+
+config({ quiet: true });
 
 function required(name: string): string {
   const value = process.env[name];

@@ -10,19 +10,19 @@ export class AppError extends Error {
 }
 
 export class ValidationError extends AppError {
-  constructor(message: string) {
-    super(400, "VALIDATION_ERROR", message);
+  constructor(message: string, code = "VALIDATION_ERROR") {
+    super(400, code, message);
   }
 }
 
 export class NotFoundError extends AppError {
-  constructor(message: string) {
-    super(404, "NOT_FOUND", message);
+  constructor(message: string, code = "NOT_FOUND") {
+    super(404, code, message);
   }
 }
 
 export class ConflictError extends AppError {
-  constructor(message: string) {
-    super(409, "CONFLICT", message);
+  constructor(message: string, code = "CONFLICT") {
+    super(409, code, message);
   }
 }

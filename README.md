@@ -21,10 +21,11 @@ API REST en Node.js/TypeScript para gestión de tareas — reto de código del p
 ## Tests
 
 ```
+npm run migrate:test   # una vez, aplica el esquema a retogeest_test
 npm test
 ```
 
-Corren contra la base `retogeest_test` (aislada de la de desarrollo), levantada por el mismo `docker-compose.yml`.
+Corren contra la base `retogeest_test` (aislada de la de desarrollo), levantada por el mismo `docker-compose.yml`. Cada test limpia las tablas relevantes antes de correr (`tests/helpers/db.ts`).
 
 ## Despliegue
 
@@ -39,7 +40,7 @@ _Pendiente — se documenta al cerrar el proyecto._
 
 ## Supuestos
 
-_Se documentan conforme surgen ambigüedades en cada fase._
+- **Email único por usuario**: el reto no lo especifica, pero se asume que no puede haber dos usuarios con el mismo correo. `POST /users` responde `409 EMAIL_ALREADY_REGISTERED` en ese caso.
 
 ## Extra (mejora de nivel)
 

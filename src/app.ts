@@ -1,6 +1,7 @@
 import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
 import { AppError } from "./utils/errors.js";
 import { healthRoutes } from "./routes/health.js";
+import { userRoutes } from "./routes/users.js";
 
 export function buildApp(): FastifyInstance {
   const app = Fastify({ logger: true });
@@ -28,6 +29,7 @@ export function buildApp(): FastifyInstance {
   });
 
   app.register(healthRoutes);
+  app.register(userRoutes);
 
   return app;
 }
