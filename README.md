@@ -2,6 +2,12 @@
 
 API REST en Node.js/TypeScript para gestión de tareas — reto de código del proceso de selección de GEEST.
 
+## 🔗 URL de prueba
+
+> ### **[`https://retogeest.appsmx.tech`](https://retogeest.appsmx.tech)**
+>
+> Requiere header `x-api-key` en cualquier request salvo `GET /health` (valor en la sección [Despliegue](#despliegue)).
+
 ## Stack
 
 - Node.js 24 (`.node-version`) + TypeScript, Fastify
