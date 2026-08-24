@@ -40,6 +40,13 @@ export async function getTaskById(id: number): Promise<Task | null> {
   return row ? mapRow(row) : null;
 }
 
+export async function archiveTask(id: number): Promise<void> {
+  await pool.query(
+    "UPDATE tasks SET status = 'archived', archived_at = NOW() WHERE id = :id AND status = 'open'",
+    { id },
+  );
+}
+
 export async function listTasks(status?: TaskStatus): Promise<Task[]> {
   const [rows] = status
     ? await pool.query<TaskRow[]>(

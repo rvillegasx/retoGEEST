@@ -1,6 +1,8 @@
 import type { FastifyInstance } from "fastify";
-import { createUser, listUsers, type CreateUserInput } from "../repositories/usersRepository.js";
-import { ConflictError, ValidationError } from "../utils/errors.js";
+import { getPendingTasksForUsers, getTasksForUser } from "../repositories/taskAssignmentsRepository.js";
+import { createUser, getUserById, listUsers, type CreateUserInput } from "../repositories/usersRepository.js";
+import { ConflictError, NotFoundError, ValidationError } from "../utils/errors.js";
+import { parsePositiveIntParam } from "../utils/params.js";
 
 interface CreateUserBody {
   name?: unknown;
@@ -46,6 +48,17 @@ export async function userRoutes(app: FastifyInstance) {
 
   app.get("/users", async () => {
     const users = await listUsers();
-    return users.map((user) => ({ ...user, pendingTasks: [] }));
+    const pendingMap = await getPendingTasksForUsers(users.map((user) => user.id));
+    return users.map((user) => ({ ...user, pendingTasks: pendingMap.get(user.id) ?? [] }));
+  });
+
+  app.get("/users/:idUser/tasks", async (request) => {
+    const params = request.params as { idUser: string };
+    const idUser = parsePositiveIntParam(params.idUser, "idUser");
+
+    const user = await getUserById(idUser);
+    if (!user) throw new NotFoundError("user not found", "USER_NOT_FOUND");
+
+    return getTasksForUser(idUser);
   });
 }

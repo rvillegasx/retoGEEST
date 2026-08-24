@@ -42,6 +42,7 @@ _Pendiente — se documenta al cerrar el proyecto._
 ## Supuestos
 
 - **Email único por usuario**: el reto no lo especifica, pero se asume que no puede haber dos usuarios con el mismo correo. `POST /users` responde `409 EMAIL_ALREADY_REGISTERED` en ese caso.
+- **Completar dos veces la misma parte no es error**: si un usuario ya había marcado su parte como completada y vuelve a llamar `POST /tasks/:idTask/complete`, la respuesta es éxito (operación idempotente a nivel de dominio) en lugar de un error — el estado resultante es el mismo.
 
 ## Extra (mejora de nivel)
 
