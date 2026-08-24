@@ -1,2 +1,46 @@
 # retoGEEST
-Construir una API REST en Node.js como parte de una evaluación de GEEST.
+
+API REST en Node.js/TypeScript para gestión de tareas — reto de código del proceso de selección de GEEST.
+
+## Stack
+
+- Node.js 24 (ver `.node-version`) + TypeScript
+- Fastify
+- MySQL (`mysql2`), SQL directo con migraciones propias versionadas en `db/migrations`
+- Vitest para tests
+
+## Cómo correr localmente
+
+1. `fnm use` (o Node 24+ manualmente)
+2. `npm install`
+3. `docker compose up -d` — levanta MySQL local con las bases `retogeest` (dev) y `retogeest_test`
+4. `cp .env.example .env` y `cp .env.test.example .env.test`
+5. `npm run migrate` — aplica el esquema (`db/migrations`) a `retogeest`
+6. `npm run dev` — servidor en `http://localhost:3000`
+
+## Tests
+
+```
+npm test
+```
+
+Corren contra la base `retogeest_test` (aislada de la de desarrollo), levantada por el mismo `docker-compose.yml`.
+
+## Despliegue
+
+_Pendiente — se documenta al cerrar el proyecto._
+
+## Decisiones técnicas
+
+- **Fastify** sobre Express: validación de esquemas integrada y mejor soporte de TypeScript.
+- **SQL directo con `mysql2`, sin ORM**: control total y transparencia sobre cómo se resuelven idempotencia y bloqueos de concurrencia, que son el punto más delicado del reto (sección Confiabilidad).
+- **Migraciones propias**: archivos `.sql` numerados en `db/migrations`, aplicados y registrados por un runner (`db/migrate.ts`) contra una tabla `schema_migrations`. Sin dependencia de un ORM/CLI externo.
+- **MySQL en Docker para desarrollo local**; en producción se usa una instancia MySQL ya existente en el Dokploy "beta" — el código no cambia entre ambientes, solo las variables de entorno (`DB_HOST`, etc.).
+
+## Supuestos
+
+_Se documentan conforme surgen ambigüedades en cada fase._
+
+## Extra (mejora de nivel)
+
+_Pendiente — se implementa y documenta en la fase final._
