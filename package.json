@@ -10,7 +10,7 @@
     "dev": "tsx watch src/server.ts",
     "typecheck": "tsc -p tsconfig.json",
     "build": "tsc -p tsconfig.build.json",
-    "start": "node dist/server.js",
+    "start": "node dist/db/migrate.js && node dist/src/server.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "migrate": "tsx db/migrate.ts",

@@ -1,0 +1,13 @@
+node_modules
+dist
+coverage
+mysql-data
+
+.env
+.env.*
+!.env.example
+!.env.test.example
+
+.git
+.DS_Store
+*.log
