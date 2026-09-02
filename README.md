@@ -35,7 +35,7 @@ npm test
 - **Dónde:** `https://retogeest.appsmx.tech` — Dokploy, en un VPS propio.
 - **Por qué:** ya opero esa infraestructura (Docker + Nginx + Dokploy) para otros proyectos; costo marginal cero, control total sobre logs y redeploy, sin límites de horas/sleep de un PaaS gratuito de terceros.
 - **Cómo:** `Dockerfile` multi-stage en el repo; Dokploy hace build y redeploy automático en cada push a `main` vía webhook de GitHub. Las migraciones corren solas al arrancar el contenedor (`npm start` = migrar + levantar el servidor), así que un despliegue nuevo nunca queda con el esquema desactualizado.
-- **Cómo acceder:** header `x-api-key: <API_KEY>` en cualquier request salvo `GET /health`.
+- **Cómo acceder:** header `x-api-key: <API_KEY>` en cualquier request salvo `GET /health`. La key real se inyecta vía variable de entorno en el despliegue; pídela al autor del repo.
 
 ## UML de la base de datos
 
